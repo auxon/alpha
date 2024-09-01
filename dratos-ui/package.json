@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "pretest": "npx scrypt-cli compile",
+    "build:contract": "npx scrypt-cli compile",
+    "deploy:contract": "npx tsx ./scripts/deploy.ts",
+    "verify:contract": "npx scrypt-cli verify $(cat .scriptHash) ./src/contracts/dratosUi.ts",
+    "genprivkey": "npx tsx ./scripts/privateKey.ts"
   },
   "dependencies": {
     "ai": "^3.3.21",
@@ -14,12 +19,14 @@
     "react": "^18",
     "react-dom": "^18",
     "reactflow": "^11.11.4",
-    "scrypt-ord": "^1.0.17"
+    "scrypt-ord": "^1.0.17",
+    "scrypt-ts": "^1.4.0"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18",
+    "dotenv": "^16.4.5",
     "eslint": "^8",
     "eslint-config-next": "14.2.7",
     "postcss": "^8",
