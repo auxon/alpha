@@ -1,0 +1,16 @@
+contract InscriptionContract {
+    // The JSON data to be inscribed
+    public data: string;
+
+    // Constructor to initialize the contract with the JSON data
+    constructor(data: string) {
+        this.data = data;
+    }
+
+    // Function to verify the inscription
+    public function verify() {
+        // Add logic to verify the inscription
+        // For simplicity, we assume the inscription is always valid
+        require(true);
+    }
+}

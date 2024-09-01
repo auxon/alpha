@@ -9,7 +9,7 @@ export default function Home() {
     <div>
       <h1>Dratos UI</h1>
       <Diagram />
-      <ChatBot />
+      {/* <ChatBot /> */}
     </div>
   );
 }
