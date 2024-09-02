@@ -1,7 +1,7 @@
 import { writeFileSync } from 'fs'
-import { WorkflowOrdinalNFT } from '../src/contracts/WorkflowOrdinalNFT'
+import { DratosUi } from '../src/contracts/dratosUi'
 import { privateKey } from './privateKey'
-import { bsv, TestWallet, DefaultProvider, sha256, Addr } from 'scrypt-ts'
+import { bsv, TestWallet, DefaultProvider, sha256 } from 'scrypt-ts'
 
 function getScriptHash(scriptPubKeyHex: string) {
     const res = sha256(scriptPubKeyHex).match(/.{2}/g)
@@ -12,10 +12,8 @@ function getScriptHash(scriptPubKeyHex: string) {
 }
 
 async function main() {
-    await WorkflowOrdinalNFT.loadArtifact()
+    await DratosUi.loadArtifact()
 
-    const publicKey = privateKey.publicKey
-    
     // Prepare signer. 
     // See https://scrypt.io/docs/how-to-deploy-and-call-a-contract/#prepare-a-signer-and-provider
     const signer = new TestWallet(privateKey, new DefaultProvider({
@@ -23,12 +21,10 @@ async function main() {
     }))
 
     // TODO: Adjust the amount of satoshis locked in the smart contract:
-    const amount = 1
+    const amount = 100
 
-    const instance = new WorkflowOrdinalNFT(
-        '00', // workflowData: ByteString (placeholder)
-        Addr(publicKey.toAddress().toByteString()),  // ownerPubKeyHash: Ripemd160,
-        10000n,
+    const instance = new DratosUi(
+        // TODO: Pass constructor parameter values.
         0n
     )
 
