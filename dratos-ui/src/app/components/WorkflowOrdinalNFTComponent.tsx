@@ -1,17 +1,64 @@
+'use client'
+
 import React, { useState } from 'react'
 import { deployWorkflowOrdinal, transferWorkflowOrdinal } from '../../lib/workflowOrdinalNFT'
+import { WorkflowOrdinalNFT } from '@/contracts/WorkflowOrdinalNFT'
+import { bsv, DefaultProvider, PandaSigner } from 'scrypt-ts'
 
 const WorkflowOrdinalNFTComponent: React.FC = () => {
     const [workflowData, setWorkflowData] = useState('')
     const [ownerPublicKey, setOwnerPublicKey] = useState('')
     const [newOwnerPublicKey, setNewOwnerPublicKey] = useState('')
-    const [deployedInstance, setDeployedInstance] = useState(null)
+    const [deployedInstance, setDeployedInstance] = useState<WorkflowOrdinalNFT | null>(null)
+    const [mintAmount, setMintAmount] = useState('')
+    const [deployedTokenId, setDeployedTokenId] = useState<string | null>(null)
+    const [currentOwnerPrivateKey, setCurrentOwnerPrivateKey] = useState('')
+    const privateKeyWIF = process.env.PRIVATE_KEY || 'your_default_private_key_wif'
+    const privateKey = bsv.PrivateKey.fromWIF(privateKeyWIF)
+
+    const handleMint = async () => {
+        if (!deployedInstance) {
+            alert('No deployed instance available.')
+            return
+        }
+
+        try {
+            const provider = new DefaultProvider({ network: bsv.Networks.mainnet })
+            const signer = new PandaSigner(provider)
+
+            const { isAuthenticated, error } = await signer.requestAuth()
+            if (!isAuthenticated) {
+                throw new Error(error)
+            }
+
+            await deployedInstance.connect(signer)
+            const amt = BigInt(mintAmount)
+            
+            // Instead of deployToken, use the mint method directly
+            const mintTx = await deployedInstance.deploy(Number(amt))
+            
+            console.log("Minted tx: ", mintTx.id)
+            alert(`Minted successfully! Transaction ID: ${mintTx.id}`)
+    
+        } catch (error) {
+            console.error('Minting failed:', error)
+            alert('Minting failed. Check console for details.')
+        }
+    }
 
     const handleDeploy = async () => {
         try {
-            const instance = await deployWorkflowOrdinal(workflowData, ownerPublicKey)
+            const provider = new DefaultProvider({ network: bsv.Networks.mainnet })
+            const signer = new PandaSigner(provider)
+
+            const { isAuthenticated, error } = await signer.requestAuth()
+            if (!isAuthenticated) {
+                throw new Error(error)
+            }
+
+            const { instance } = await deployWorkflowOrdinal(workflowData, ownerPublicKey, signer)
             setDeployedInstance(instance)
-            alert('Ordinal deployed successfully!')
+            alert('Deployment successful!')
         } catch (error) {
             console.error('Deployment failed:', error)
             alert('Deployment failed. Check console for details.')
@@ -23,15 +70,15 @@ const WorkflowOrdinalNFTComponent: React.FC = () => {
             alert('No deployed instance available.')
             return
         }
-
+    
         try {
-            // Note: In a real application, you would never handle private keys on the client side.
-            // This is just for demonstration purposes.
-            const currentOwnerPrivateKey = prompt('Enter current owner\'s private key:')
-            if (!currentOwnerPrivateKey) return
-
-            const tx = await transferWorkflowOrdinal(deployedInstance, currentOwnerPrivateKey, newOwnerPublicKey)
-            alert(`Transfer successful! Transaction ID: ${tx.id}`)
+            const transferTx = await transferWorkflowOrdinal(
+                deployedInstance,
+                privateKey.toString(),
+                newOwnerPublicKey
+            )
+            console.log("Transfer tx: ", transferTx.id)
+            alert(`Transfer successful! Transaction ID: ${transferTx.id}`)
         } catch (error) {
             console.error('Transfer failed:', error)
             alert('Transfer failed. Check console for details.')
@@ -61,6 +108,23 @@ const WorkflowOrdinalNFTComponent: React.FC = () => {
                 </label>
             </div>
             <button onClick={handleDeploy}>Deploy Ordinal</button>
+
+            {deployedInstance && (
+                <div>
+                    <h3>Mint Tokens</h3>
+                    <div>
+                        <label>
+                            Mint Amount:
+                            <input
+                                type="number"
+                                value={mintAmount}
+                                onChange={(e) => setMintAmount(e.target.value)}
+                            />
+                        </label>
+                    </div>
+                    <button onClick={handleMint}>Mint Tokens</button>
+                </div>
+            )}
 
             {deployedInstance && (
                 <div>

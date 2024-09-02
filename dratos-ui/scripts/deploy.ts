@@ -27,7 +27,9 @@ async function main() {
 
     const instance = new WorkflowOrdinalNFT(
         '00', // workflowData: ByteString (placeholder)
-        Addr(publicKey.toAddress().toByteString())  // ownerPubKeyHash: Ripemd160
+        Addr(publicKey.toAddress().toByteString()),  // ownerPubKeyHash: Ripemd160,
+        10000n,
+        0n
     )
 
     // Connect to a signer.

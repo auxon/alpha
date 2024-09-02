@@ -1,7 +1,7 @@
-import { BSV20V2, BSV20V2P2PKH, OrdinalNFT } from 'scrypt-ord';
-import { assert, ByteString, hash160, method, prop, PubKey, Ripemd160, Sig, slice, SmartContract, len } from 'scrypt-ts';
+import { BSV20V1, BSV20V2, BSV20V2P2PKH, OrdinalNFT } from 'scrypt-ord';
+import { assert, ByteString, hash160, len, method, prop, PubKey, Ripemd160, Sig, slice, SmartContract } from 'scrypt-ts';
 
-class WorkflowOrdinalNFT extends BSV20V2 {
+export class WorkflowOrdinalNFT extends BSV20V2 {
     @prop()
     workflowData: ByteString;
 
@@ -49,5 +49,6 @@ class WorkflowOrdinalNFT extends BSV20V2 {
         this.ownerPubKeyHash = toPubKeyHash;
 
         assert(true, 'Transfer successful');
+
     }
 }
