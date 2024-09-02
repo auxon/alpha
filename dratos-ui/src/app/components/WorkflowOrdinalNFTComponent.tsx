@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { deployWorkflowOrdinal, transferWorkflowOrdinal } from '../../lib/workflowOrdinalNFT'
-import { WorkflowOrdinalNFT } from '@/contracts/WorkflowOrdinalNFT'
+import { WorkflowOrdinal } from '@/contracts/WorkflowOrdinalNFT'
 import { bsv, DefaultProvider, PandaSigner } from 'scrypt-ts'
 import * as dotenv from 'dotenv'
 const dotenvConfigPath = '.env'
@@ -10,19 +10,21 @@ dotenv.config({ path: dotenvConfigPath })
 
 const WorkflowOrdinalNFTComponent: React.FC = () => {
     const [workflowData, setWorkflowData] = useState('')
-    const [ownerPublicKey, setOwnerPublicKey] = useState('')
-    const [newOwnerPublicKey, setNewOwnerPublicKey] = useState('')
-    const [deployedInstance, setDeployedInstance] = useState<WorkflowOrdinalNFT | null>(null)
+    const [ownerPublicKey, setOwnerPublicKey] = useState<bsv.PublicKey | null>(null)
+    const [newOwnerPublicKey, setNewOwnerPublicKey] = useState<bsv.PublicKey | null>(null)
+    const [deployedInstance, setDeployedInstance] = useState<WorkflowOrdinal | null>(null)
     const [mintAmount, setMintAmount] = useState('')
     const [deployedTokenId, setDeployedTokenId] = useState<string | null>(null)
-    const [currentOwnerPrivateKey, setCurrentOwnerPrivateKey] = useState('')
     const [privateKey, setPrivateKey] = useState('')
+    const [ownerAddress, setOwnerAddress] = useState<bsv.Address | null>(null)
+    const [newOwnerAddress, setNewOwnerAddress] = useState<bsv.Address | null>(null)
 
     useEffect(() => {
         async function fetchPrivateKey() {
           const response = await fetch('api/getPrivateKey')
           const data = await response.json()
           setPrivateKey(data.privateKey)
+          setOwnerAddress(bsv.PrivateKey.fromWIF(data.privateKey).publicKey.toAddress())
         }
         fetchPrivateKey()
       }, [])
@@ -67,7 +69,7 @@ const WorkflowOrdinalNFTComponent: React.FC = () => {
                 throw new Error(error)
             }
 
-            const { instance } = await deployWorkflowOrdinal(workflowData, ownerPublicKey, signer)
+            const { instance } = await deployWorkflowOrdinal(workflowData, signer)
             setDeployedInstance(instance)
             alert('Deployment successful!')
         } catch (error) {
@@ -83,13 +85,21 @@ const WorkflowOrdinalNFTComponent: React.FC = () => {
         }
     
         try {
+            const provider = new DefaultProvider({ network: bsv.Networks.mainnet })
+            const signer = new PandaSigner(provider)
+
+            const { isAuthenticated, error } = await signer.requestAuth()
+            if (!isAuthenticated) {
+                throw new Error(error)
+            }
+            
             const transferTx = await transferWorkflowOrdinal(
                 deployedInstance,
-                privateKey.toString(),
-                newOwnerPublicKey
+                privateKey,
+                newOwnerAddress
             )
-            console.log("Transfer tx: ", transferTx.id)
-            alert(`Transfer successful! Transaction ID: ${transferTx.id}`)
+            console.log("Transfer tx: ", transferTx)
+            alert(`Transfer successful! Transaction ID: ${transferTx}`)
         } catch (error) {
             console.error('Transfer failed:', error)
             alert('Transfer failed. Check console for details.')
@@ -110,11 +120,11 @@ const WorkflowOrdinalNFTComponent: React.FC = () => {
             </div>
             <div>
                 <label>
-                    Owner Public Key:
+                    Owner Address:
                     <input
                         type="text"
-                        value={ownerPublicKey}
-                        onChange={(e) => setOwnerPublicKey(e.target.value)}
+                        value={ownerAddress?.toByteString()}
+                        onChange={(e) => { setOwnerAddress(bsv.Address.fromString(e.target.value)) }}
                     />
                 </label>
             </div>
@@ -142,11 +152,11 @@ const WorkflowOrdinalNFTComponent: React.FC = () => {
                     <h3>Transfer Ordinal</h3>
                     <div>
                         <label>
-                            New Owner Public Key:
+                            New Owner Address:
                             <input
                                 type="text"
-                                value={newOwnerPublicKey}
-                                onChange={(e) => setNewOwnerPublicKey(e.target.value)}
+                                value={newOwnerAddress?.toByteString()}
+                                onChange={(e) => setNewOwnerAddress(bsv.Address.fromString(e.target.value))}
                             />
                         </label>
                     </div>

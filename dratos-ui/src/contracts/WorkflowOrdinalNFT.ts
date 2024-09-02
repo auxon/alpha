@@ -1,54 +1,119 @@
-import { BSV20V1, BSV20V2, BSV20V2P2PKH, OrdinalNFT } from 'scrypt-ord';
-import { assert, ByteString, hash160, len, method, prop, PubKey, Ripemd160, Sig, slice, SmartContract } from 'scrypt-ts';
+import { BSV20V2, BSV20V2P2PKH } from 'scrypt-ord'
+import {
+    ByteString,
+    Addr,
+    hash256,
+    method,
+    prop,
+    toByteString,
+    assert,
+    MethodCallOptions,
+    ContractTransaction,
+    bsv,
+    PubKey,
+    Sig,
+    pubKey2Addr,
+    ripemd160
+} from 'scrypt-ts'
 
-export class WorkflowOrdinalNFT extends BSV20V2 {
+export class WorkflowOrdinal extends BSV20V2P2PKH {
+
     @prop()
-    workflowData: ByteString;
+    supply: bigint
 
     @prop()
-    ownerPubKeyHash: Ripemd160;
+    workflowData: ByteString
 
-    constructor(workflowData: ByteString, ownerPubKeyHash: Ripemd160, maxSupply: bigint, decimals: bigint) {
-        super(workflowData, ownerPubKeyHash, maxSupply, decimals);
+    constructor(id, sym, amt, dec, addr) {
+        super(id, sym, amt, dec, addr);
         this.init(...arguments);
-        this.workflowData = workflowData;
-        this.ownerPubKeyHash = ownerPubKeyHash;
     }
 
     @method()
-    public unlock(sig: Sig, pubKey: PubKey) {
-        // Ensure the workflow data is not empty
-        assert(len(this.workflowData) > 0n, 'Workflow data cannot be empty');
-        // Verify the transaction is signed by the current owner
-        assert(hash160(pubKey) == this.ownerPubKeyHash, 'Invalid owner');
-        assert(this.checkSig(sig, pubKey), 'Signature verification failed');
-    }
+    public mint(dest: Addr, amount: bigint) {
+        // Check mint amount doesn't exceed maximum.
+        assert(amount <= this.max, 'mint amount exceeds maximum')
+        assert(amount > 0n, 'mint amount should > 0')
+        assert(amount <= this.supply, 'mint amount exceeds supply')
+        this.supply -= amount
+        assert(this.supply >= 0n, 'all supply mint out')
+        let outputs = toByteString('')
 
-    @method()
-    public transfer(toPubKeyHash: Ripemd160, sig: Sig, pubKey: PubKey) {
-        // Ensure the current owner is signing the transaction
-        assert(hash160(pubKey) == this.ownerPubKeyHash, 'Invalid owner');
-        assert(this.checkSig(sig, pubKey), 'Signature verification failed');
-        
-        // Check that the new owner receives the token
-        let isValidTransfer = false;
-        const MAX_OUTPUTS = 10; // Adjust this number based on your expected maximum outputs
-        const OUTPUT_SIZE = 32n; // Size of each output hash in bytes
-
-        // Iterate through outputs to verify that the new owner receives the token
-        for (let i = 0; i < MAX_OUTPUTS; i++) {
-            const outputHash = slice(this.ctx.hashOutputs, BigInt(i) * OUTPUT_SIZE, OUTPUT_SIZE);
-            if (outputHash == toPubKeyHash) {
-                isValidTransfer = true;
-            }
+        if (this.supply > 0n) {
+            outputs += this.buildStateOutputFT(this.supply)
         }
 
-        assert(isValidTransfer, 'Transfer failed: No output to the new owner found');
-    
-        // Update the owner to the new public key hash
-        this.ownerPubKeyHash = toPubKeyHash;
+        // Build FT P2PKH output to dest paying specified amount of tokens.
+        outputs += BSV20V2.buildTransferOutput(dest, this.id, amount)
 
-        assert(true, 'Transfer successful');
+        // Build change output.
+        outputs += this.buildChangeOutput()
 
+        assert(hash256(outputs) == this.ctx.hashOutputs, 'hashOutputs mismatch')
+    }
+
+    static async mintTxBuilder(
+        current: WorkflowOrdinal,
+        options: MethodCallOptions<WorkflowOrdinal>,
+        dest: Addr,
+        amount: bigint
+    ): Promise<ContractTransaction> {
+        const defaultAddress = await current.signer.getDefaultAddress()
+
+        const remaining = current.supply - amount
+
+        const tx = new bsv.Transaction().addInput(current.buildContractInput()).addData(current.workflowData)
+        const nexts: any[] = []
+        const tokenId = current.getTokenId()
+        if (remaining > 0n) {
+            const next = current.next()
+
+            if (!next.id) {
+                next.id = toByteString(tokenId, true)
+            }
+
+            next.supply = remaining
+            next.setAmt(remaining)
+
+            tx.addOutput(
+                new bsv.Transaction.Output({
+                    satoshis: 1,
+                    script: next.lockingScript,
+                })
+            )
+
+            nexts.push({
+                instance: next,
+                balance: 1,
+                atOutputIndex: 0,
+            })
+        }
+
+        tx.addOutput(
+            bsv.Transaction.Output.fromBufferReader(
+                new bsv.encoding.BufferReader(
+                    Buffer.from(
+                        BSV20V2.buildTransferOutput(
+                            dest,
+                            toByteString(tokenId, true),
+                            amount
+                        ),
+                        'hex'
+                    )
+                )
+            )
+        )
+
+        tx.change(options.changeAddress || defaultAddress)
+        return { tx, atInputIndex: 0, nexts }
+    }
+
+    @method()
+    public unlock(sig: Sig, pubkey: PubKey) {
+        // make sure the `pubkey` is the one locked with its address in the constructor
+        assert(pubKey2Addr(pubkey) == this.addr, 'address check failed')
+
+       // make sure the `sig` is signed by the private key corresponding to the `pubkey`
+        assert(this.checkSig(sig, pubkey), 'signature check failed')
     }
 }
