@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { deployWorkflowOrdinal, transferWorkflowOrdinal } from '../../../lib/workflowOrdinalNFT'
+import { deployWorkflowOrdinal, transferWorkflowOrdinal } from '../../lib/workflowOrdinalNFT'
 
 const WorkflowOrdinalNFTComponent: React.FC = () => {
     const [workflowData, setWorkflowData] = useState('')
