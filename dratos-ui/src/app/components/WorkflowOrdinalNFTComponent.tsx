@@ -1,9 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { deployWorkflowOrdinal, transferWorkflowOrdinal } from '../../lib/workflowOrdinalNFT'
 import { WorkflowOrdinalNFT } from '@/contracts/WorkflowOrdinalNFT'
 import { bsv, DefaultProvider, PandaSigner } from 'scrypt-ts'
+import * as dotenv from 'dotenv'
+const dotenvConfigPath = '.env'
+dotenv.config({ path: dotenvConfigPath })
 
 const WorkflowOrdinalNFTComponent: React.FC = () => {
     const [workflowData, setWorkflowData] = useState('')
@@ -13,9 +16,17 @@ const WorkflowOrdinalNFTComponent: React.FC = () => {
     const [mintAmount, setMintAmount] = useState('')
     const [deployedTokenId, setDeployedTokenId] = useState<string | null>(null)
     const [currentOwnerPrivateKey, setCurrentOwnerPrivateKey] = useState('')
-    const privateKeyWIF = process.env.PRIVATE_KEY || 'your_default_private_key_wif'
-    const privateKey = bsv.PrivateKey.fromWIF(privateKeyWIF)
+    const [privateKey, setPrivateKey] = useState('')
 
+    useEffect(() => {
+        async function fetchPrivateKey() {
+          const response = await fetch('api/getPrivateKey')
+          const data = await response.json()
+          setPrivateKey(data.privateKey)
+        }
+        fetchPrivateKey()
+      }, [])
+    
     const handleMint = async () => {
         if (!deployedInstance) {
             alert('No deployed instance available.')
