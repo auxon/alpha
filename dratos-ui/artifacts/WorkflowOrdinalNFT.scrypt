@@ -1,0 +1,79 @@
+import "node_modules/scrypt-ord/src/contracts/ordinal.scrypt";
+struct __scrypt_ts_Change {  int amount;  Ripemd160 address;}
+
+contract WorkflowOrdinal {
+  @state bytes id;
+  const int max;
+  const int dec;
+  const bytes sym;
+  Ripemd160 addr;
+  int supply;
+  bytes workflowData;
+  bytes __scrypt_ts_ctx_hashoutputs;
+  bytes __scrypt_ts_ctx_outpoint_txid;
+  int __scrypt_ts_ctx_outpoint_outputindex;
+  __scrypt_ts_Change __scrypt_ts_change;
+  constructor(bytes id, bytes sym, int amt, int dec, Ripemd160 addr) {
+    this.max = amt;
+    this.dec = dec;
+    this.id = id;
+    this.sym = sym;
+    require(this.max <= 18446744073709551615);
+    require(this.dec <= 18);
+    
+    this.supply = amt;
+    this.workflowData = b'';
+    this.addr = addr;
+  }
+  function buildStateOutputFT(int amt) : bytes {
+    if(this.isGenesis()) {
+        this.initId();
+      }
+    bytes stateScript = WorkflowOrdinal.createTransferInsciption(this.id, amt) + Ordinal.removeInsciption(this.getStateScript());
+    return Utils.buildOutput(stateScript, 1);
+  }
+  function isGenesis() : bool {
+    return this.id == b'';
+  }
+  static function buildTransferOutput(Ripemd160 address, bytes id, int amt) : bytes {
+    bytes transferScript = WorkflowOrdinal.buildTransferScript(address, id, amt);
+    return Utils.buildOutput(transferScript, 1);
+  }
+  static function buildTransferScript(Ripemd160 address, bytes id, int amt) : bytes {
+    return (WorkflowOrdinal.createTransferInsciption(id, amt) + Utils.buildPublicKeyHashScript(address));
+  }
+  static function createTransferInsciption(bytes id, int amt) : bytes {
+    bytes amtByteString = Ordinal.int2Str(amt);
+    bytes transferJSON = "{\"p\":\"bsv-20\",\"op\":\"transfer\",\"id\":\"" + id + "\",\"amt\":\"" + amtByteString + "\"}";
+    return Ordinal.createInsciption(transferJSON, "application/bsv-20");
+  }
+  function initId() : bool {
+    this.id = Ordinal.txId2str(this.__scrypt_ts_ctx_outpoint_txid) + "_" + Ordinal.int2Str(this.__scrypt_ts_ctx_outpoint_outputindex);
+    return true;
+  }
+  public function mint(Ripemd160 dest, int amount, SigHashPreimage __scrypt_ts_txPreimage, int __scrypt_ts_changeAmount, Ripemd160 __scrypt_ts_changeAddress) {
+    require(Tx.checkPreimageSigHashType(__scrypt_ts_txPreimage, SigHashType(b'41')));
+    this.__scrypt_ts_ctx_hashoutputs = SigHash.hashOutputs(__scrypt_ts_txPreimage);
+    this.__scrypt_ts_ctx_outpoint_outputindex = unpack(SigHash.outpoint(__scrypt_ts_txPreimage)[32 :]);
+    this.__scrypt_ts_ctx_outpoint_txid = SigHash.outpoint(__scrypt_ts_txPreimage)[0:32];
+    this.__scrypt_ts_change = {__scrypt_ts_changeAmount, __scrypt_ts_changeAddress};
+    require(amount <= this.max);
+    require(amount > 0);
+    require(amount <= this.supply);
+    this.supply -= amount;
+    require(this.supply >= 0);
+    bytes outputs = b'';
+    if(this.supply > 0) {
+        outputs += this.buildStateOutputFT(this.supply);
+      }
+    outputs += WorkflowOrdinal.buildTransferOutput(dest, this.id, amount);
+    outputs += this.buildChangeOutput();
+    require(hash256(outputs) == this.__scrypt_ts_ctx_hashoutputs);
+  }
+  public function unlock(Sig sig, PubKey pubkey) {
+    require(hash160(pubkey) == this.addr);
+    require(checkSig(sig, pubkey));
+  }
+  function buildStateOutput(int amount) : bytes {  return Utils.buildOutput(this.getStateScript(), amount);}
+  function buildChangeOutput() : bytes {  return this.__scrypt_ts_change.amount > 0 ? Utils.buildOutput(Utils.buildPublicKeyHashScript(this.__scrypt_ts_change.address), this.__scrypt_ts_change.amount) : b'';}
+}

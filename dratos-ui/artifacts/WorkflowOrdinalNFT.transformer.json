@@ -1,0 +1,9 @@
+{
+  "success": true,
+  "errors": [],
+  "scryptfile": "WorkflowOrdinalNFT.scrypt",
+  "sourceMapFile": "WorkflowOrdinalNFT.scrypt.map",
+  "ctxMethods": [
+    "mint"
+  ]
+}
