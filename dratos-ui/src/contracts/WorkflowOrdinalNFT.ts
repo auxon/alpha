@@ -15,8 +15,12 @@ import {
     pubKey2Addr,
     ripemd160
 } from 'scrypt-ts'
+import { Ripemd160 } from 'scryptlib';
 
-export class WorkflowOrdinal extends BSV20V2P2PKH {
+export class WorkflowOrdinal extends BSV20V2 {
+
+    @prop()
+    addr: Ripemd160
 
     @prop()
     supply: bigint
@@ -24,9 +28,12 @@ export class WorkflowOrdinal extends BSV20V2P2PKH {
     @prop()
     workflowData: ByteString
 
-    constructor(id, sym, amt, dec, addr) {
-        super(id, sym, amt, dec, addr);
+    constructor(id: ByteString, sym: ByteString, amt: bigint, dec: bigint, addr: Ripemd160) {
+        super(id, sym, amt, dec);
         this.init(...arguments);
+        this.supply = amt;
+        this.workflowData = toByteString('');
+        this.addr = addr;
     }
 
     @method()

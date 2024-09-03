@@ -8,9 +8,11 @@ const nextConfig = {
         path: false,
         module: false
       }
+      config.resolve.alias['@scrypt-inc/bsv'] = '@scrypt-inc/bsv/dist/index.js'
     }
     return config;
-  }
+  },
+  transpilePackages: ['@scrypt-inc/bsv']
 }
 
 module.exports = nextConfig
