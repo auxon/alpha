@@ -9,7 +9,7 @@ export default function Home() {
   return (
     <div>
       <h1>Dratos UI</h1>
-      <WorkflowOrdinalNFTComponent />
+      {/* <WorkflowOrdinalNFTComponent /> */}
       <Diagram />
       {/* <ChatBot /> */}
     </div>
